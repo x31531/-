@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>복합 구조 오디오 반응 아트 – 설명 모달 상단 간격 조정</title>
+<title>복합 구조 오디오 반응 아트 – 반응형 모달</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/addons/p5.sound.min.js"></script>
 
@@ -15,7 +15,7 @@
     font-style: normal;
   }
 
-  /* ---- 컨트롤 버튼 ---- */
+  /* ---------- 컨트롤 버튼 ---------- */
   #controls {
     position: fixed;
     top: 12px;
@@ -56,8 +56,6 @@
     width: auto;
     display: block;
   }
-
-  /* 모바일 : 하단 가로 배치 */
   @media (max-width: 768px) {
     #controls {
       top: auto;
@@ -72,19 +70,18 @@
   html,body {margin:0;padding:0;height:100%;background:#000;overflow:hidden;}
   canvas {display:block;}
 
-  /* ---- 설명 모달 (상단 패딩만 줄임) ---- */
+  /* ---------- 설명 모달 (PC 기본 크기 유지) ---------- */
   #infoModal {
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: min(90%, 420px);
+    width: min(90%, 420px);        /* PC: 원래 설정 유지 */
     background: rgba(255,255,255,0.1);
     border: 1px solid rgba(255,255,255,0.3);
     border-radius: 20px;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    /* top right bottom left → 위쪽만 12px */
     padding: 12px 24px 24px 24px;
     color: #fff;
     font-family: 'OnulSamhwa', sans-serif;
@@ -111,6 +108,17 @@
   }
   #closeModal:hover {
     background: rgba(255,255,255,0.35);
+  }
+
+  /* ---------- 모바일 전용 조정 ---------- */
+  @media (max-width: 768px) {
+    #infoModal {
+      width: 92vw;           /* 화면 너비 거의 꽉 차게 */
+      max-height: 92vh;      /* 화면 높이에 맞춤 */
+      overflow-y: auto;      /* 길면 내부 스크롤 */
+      padding: 8px 16px 20px 16px;  /* 위쪽 패딩 더 줄임 */
+      box-sizing: border-box;
+    }
   }
 </style>
 </head>
@@ -313,7 +321,6 @@ function draw(){
   drawComplexPattern(false);
 }
 
-/* ---- 모달 닫기 ---- */
 document.getElementById("closeModal").addEventListener("click", () => {
   document.getElementById("infoModal").style.display = "none";
 });
