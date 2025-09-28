@@ -1,84 +1,80 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>복합 구조 오디오 반응 아트 – 버튼 슬림</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/addons/p5.sound.min.js"></script>
 
-  <title>복합 구조 오디오 반응 아트 – PC/Mobile 동일</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/addons/p5.sound.min.js"></script>
+<style>
+  @font-face {
+    font-family: 'OnulSamhwa';
+    src: url('OnulSamhwagothic-Regular.otf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+  }
 
-  <style>
-    @font-face {
-      font-family: 'OnulSamhwa';
-      src: url('OnulSamhwagothic-Regular.otf') format('opentype');
-      font-weight: normal;
-      font-style: normal;
-    }
+  #controls {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;               /* 줄 간격도 살짝 축소 */
+    z-index: 2000;
+  }
 
+  /* ★ 버튼 크기 축소 */
+  #controls button {
+    font-family: 'OnulSamhwa', sans-serif;
+    width: 90px;            /* ↓ 120 → 90 */
+    height: 30px;           /* ↓ 36 → 30 */
+    font-size: 12px;        /* ↓ 14 → 12 */
+    color: #fff;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 15px;    /* 비율에 맞게 라운드 */
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    cursor: pointer;
+    transition: background 0.25s, transform 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #controls button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+  }
+  #controls button.active {
+    background: rgba(255, 255, 255, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    transform: scale(0.95);
+  }
+
+  /* 마이크 아이콘도 축소 */
+  #toggleMic img {
+    height: 16px;           /* ↓ 20 → 16 */
+    width: auto;
+    display: block;
+  }
+
+  /* 모바일: 하단 가로 배치 */
+  @media (max-width: 768px) {
     #controls {
-      position: fixed;
-      top: 12px;
-      left: 12px;
-      display: flex;
-      flex-direction: column;
+      top: auto;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      flex-direction: row;
       gap: 8px;
-      z-index: 2000;
     }
+  }
 
-    #controls button {
-      font-family: 'OnulSamhwa', sans-serif;
-      width: 120px;
-      height: 36px;
-      font-size: 14px;
-      color: #fff;
-      background: rgba(255, 255, 255, 0.15);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      border-radius: 18px;
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      cursor: pointer;
-      transition: background 0.25s, transform 0.15s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #controls button:hover {
-      background: rgba(255, 255, 255, 0.3);
-      transform: translateY(-1px);
-    }
-    #controls button.active {
-      background: rgba(255, 255, 255, 0.35);
-      border: 1px solid rgba(255, 255, 255, 0.6);
-      transform: scale(0.95);
-    }
-    #toggleMic img {
-      height: 20px;
-      width: auto;
-      display: block;
-    }
-
-    /* 모바일(좁은 화면)에서는 하단 가로 배열 */
-    @media (max-width: 768px) {
-      #controls {
-        top: auto;
-        bottom: 12px;
-        left: 50%;
-        transform: translateX(-50%);
-        flex-direction: row;
-        gap: 12px;
-      }
-    }
-
-    body, html {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      background: #000;
-      overflow: hidden;
-    }
-    canvas { display: block; }
-  </style>
+  html,body { margin:0; padding:0; height:100%; background:#000; overflow:hidden; }
+  canvas    { display:block; }
+</style>
 </head>
 <body>
 
@@ -89,25 +85,23 @@
 </div>
 
 <script>
+// --- 기존 p5.js 오디오리액티브 스케치 코드 (생략 없음) ---
 let mic, fft;
-let micEnabled = true;
-let trailMode  = false;
-
+let micEnabled = true, trailMode = false;
 let prevAmp = 0, sustainW = 0, sustainCounter = 0;
 let time = 0, noiseOffset = 0, centroid = 0;
 let circleOffsetY = 0, lineOffsetY = 0, symbolAlpha = 255;
 let smoothHighEnergy = 0, directionSmooth = 1;
+let baseWidth;
 
 function setup() {
-  // ★ 기기 해상도 차이를 없애기 위해 픽셀 밀도 1로 고정
   pixelDensity(1);
   createCanvas(window.innerWidth, window.innerHeight);
+  baseWidth = min(window.innerWidth, 1200);
   noFill();
 
-  mic = new p5.AudioIn();
-  mic.start();
-  fft = new p5.FFT(0.8, 2048);
-  fft.setInput(mic);
+  mic = new p5.AudioIn(); mic.start();
+  fft = new p5.FFT(0.8, 2048); fft.setInput(mic);
   colorMode(RGB, 255);
 
   const trailBtn = document.getElementById("toggleTrail");
@@ -115,103 +109,86 @@ function setup() {
   const micBtn   = document.getElementById("toggleMic");
   const micIcon  = document.getElementById("micIcon");
 
-  function updateMicVisual() {
-    if (micEnabled) {
-      micIcon.src = "mic-on.png";
-      micBtn.classList.add("active");
-    } else {
-      micIcon.src = "mic-off.png";
-      micBtn.classList.remove("active");
-    }
+  function updateMicVisual(){
+    if(micEnabled){ micIcon.src="mic-on.png"; micBtn.classList.add("active"); }
+    else { micIcon.src="mic-off.png"; micBtn.classList.remove("active"); }
   }
   updateMicVisual();
 
-  trailBtn.addEventListener("click", () => {
-    trailMode = !trailMode;
-    trailBtn.classList.toggle("active", trailMode);
-  });
-
-  micBtn.addEventListener("click", () => {
-    micEnabled = !micEnabled;
-    if (micEnabled) { mic.start(); fft.setInput(mic); }
+  trailBtn.onclick = ()=>{ trailMode=!trailMode; trailBtn.classList.toggle("active",trailMode); };
+  micBtn.onclick   = ()=>{
+    micEnabled=!micEnabled;
+    if(micEnabled){ mic.start(); fft.setInput(mic); }
     else { mic.stop(); }
     updateMicVisual();
-  });
-
-  clearBtn.addEventListener("click", () => background(0));
+  };
+  clearBtn.onclick = ()=>background(0);
 }
 
-function windowResized() {
+function windowResized(){
   resizeCanvas(window.innerWidth, window.innerHeight);
+  baseWidth = min(window.innerWidth, 1200);
 }
 
-function draw() {
-  if (!trailMode) background(0);
+function draw(){
+  if(!trailMode) background(0);
 
-  time += 0.01;
-  noiseOffset += 0.005;
-
+  time += 0.01; noiseOffset += 0.005;
   let smoothedAmp, silent;
-  if (!micEnabled) {
-    smoothedAmp = 0;
-    silent = true;
-  } else {
+
+  if(!micEnabled){ smoothedAmp=0; silent=true; }
+  else {
     let spectrum = fft.analyze();
-    let nyquist = sampleRate() / 2;
-    centroid = 0;
-    let totalEnergy = 0;
-    for (let i = 0; i < spectrum.length; i++) {
-      let freq = (i / spectrum.length) * nyquist;
-      let energy = spectrum[i];
-      centroid += freq * energy;
+    let nyquist = sampleRate()/2;
+    centroid=0; let totalEnergy=0;
+    for(let i=0;i<spectrum.length;i++){
+      let freq=(i/spectrum.length)*nyquist;
+      let energy=spectrum[i];
+      centroid += freq*energy;
       totalEnergy += energy;
     }
-    if (totalEnergy > 0) centroid /= totalEnergy;
+    if(totalEnergy>0) centroid /= totalEnergy;
 
     let level = mic.getLevel();
-    let amp = map(level, 0, 0.1, 0, 600);
-    amp = constrain(amp, 0, 255);
+    let amp = map(level,0,0.1,0,600);
+    amp = constrain(amp,0,255);
     smoothedAmp = lerp(prevAmp, amp, 0.1);
     prevAmp = smoothedAmp;
-
     silent = smoothedAmp < 5;
   }
 
-  let targetCircleY = silent ? -150 : 0;
-  let targetLineY   = silent ? 150  : 0;
-  circleOffsetY = lerp(circleOffsetY, targetCircleY, 0.05);
-  lineOffsetY   = lerp(lineOffsetY,   targetLineY,   0.05);
-  symbolAlpha   = lerp(symbolAlpha, silent ? 255 : 0, 0.05);
+  circleOffsetY = lerp(circleOffsetY, silent?-150:0, 0.05);
+  lineOffsetY   = lerp(lineOffsetY,   silent?150:0, 0.05);
+  symbolAlpha   = lerp(symbolAlpha,   silent?255:0, 0.05);
 
-  let bassEnergy = micEnabled ? fft.getEnergy(20, 250) : 0;
-  let midEnergy  = micEnabled ? fft.getEnergy(250, 2000) : 0;
-  let rawHigh    = micEnabled ? fft.getEnergy(500, 8000) : 0;
+  let bassEnergy = micEnabled? fft.getEnergy(20,250):0;
+  let midEnergy  = micEnabled? fft.getEnergy(250,2000):0;
+  let rawHigh    = micEnabled? fft.getEnergy(500,8000):0;
   smoothHighEnergy = lerp(smoothHighEnergy, rawHigh, 0.3);
 
   let spacing   = map(smoothedAmp, 0, 255, 0, 60);
   let numShapes = floor(map(smoothedAmp, 0, 255, 3, 12));
 
-  if (numShapes > 3) { sustainCounter++; if (sustainCounter > 60) sustainW = min(sustainW + 2.5, 600); }
-  else { sustainCounter = 0; sustainW = lerp(sustainW, 0, 0.05); }
+  if(numShapes>3){ sustainCounter++; if(sustainCounter>60) sustainW = min(sustainW+2.5,600);}
+  else { sustainCounter=0; sustainW = lerp(sustainW, 0, 0.05); }
 
   translate(width/2, height/2);
 
-  // 무음 심볼
-  if (symbolAlpha > 1) {
+  if(symbolAlpha > 1){
     stroke(255, symbolAlpha);
     strokeWeight(2);
     ellipse(0, circleOffsetY, 80, 80);
     line(-100, lineOffsetY, 100, lineOffsetY);
   }
 
-  if (!(!silent && symbolAlpha < 5)) return;
+  if(!(!silent && symbolAlpha < 5)) return;
 
-  function drawComplexPattern(isTop = true) {
-    let targetDirection = (bassEnergy > smoothHighEnergy) ? 1 : -1;
+  function drawComplexPattern(isTop=true){
+    let targetDirection = (bassEnergy > smoothHighEnergy)? 1 : -1;
     directionSmooth = lerp(directionSmooth, targetDirection, 0.05);
     let maxRot = map(smoothedAmp, 0, 255, 0, PI/1.2);
 
-    for (let i = 0; i < numShapes; i++) {
+    for(let i=0; i<numShapes; i++){
       let t = i / (numShapes - 1);
       let y = i * spacing;
       let rot = map(t, 0, 1, 0, maxRot) * directionSmooth;
@@ -222,18 +199,17 @@ function draw() {
       let sustainFactor = pow(1 - t, 1.5);
       let sustainEffect = sustainW * sustainFactor;
 
-      let w = lerp(width * 0.15, 80, t) + sustainEffect;
+      let w = lerp(baseWidth * 0.15, 80, t) + sustainEffect;
       let h = lerp(1, 80, t);
 
-      // 선명도 강화
       let mainAlpha = map(midEnergy, 0, 255, 30, 140);
       stroke(255, mainAlpha);
       strokeWeight(map(t, 0, 1, 0.8, 3));
       ellipse(0, 0, w, h);
 
-      if (smoothHighEnergy > 20) {
+      if(smoothHighEnergy > 20){
         let detailCount = floor(map(smoothHighEnergy, 20, 255, 2, 6));
-        for (let j = 0; j < detailCount; j++) {
+        for(let j=0;j<detailCount;j++){
           let detailT = j / detailCount;
           let detailW = w * (0.2 + detailT * 0.6);
           let detailH = h * (0.2 + detailT * 0.6);
@@ -243,11 +219,11 @@ function draw() {
         }
       }
 
-      if (smoothedAmp > 50) {
+      if(smoothedAmp > 50){
         stroke(255, map(smoothedAmp, 50, 255, 25, 70));
         strokeWeight(0.4);
         beginShape();
-        for (let angle = 0; angle < TWO_PI; angle += 0.2) {
+        for(let angle=0; angle<TWO_PI; angle+=0.2){
           let noiseVal = noise(
             cos(angle)*0.01 + noiseOffset + i*0.1,
             sin(angle)*0.01 + noiseOffset + i*0.1,
@@ -259,7 +235,7 @@ function draw() {
         endShape(CLOSE);
       }
 
-      if (bassEnergy > 30) {
+      if(bassEnergy > 30){
         stroke(255, map(bassEnergy, 30, 255, 20, 60));
         strokeWeight(map(t, 0, 1, 0.4, 1.6));
         let extend = map(bassEnergy, 30, 255, 1.1, 1.4);
@@ -267,9 +243,9 @@ function draw() {
         ellipse(0, 0, w * 0.3, h * extend);
       }
 
-      if (smoothedAmp > 80) {
+      if(smoothedAmp > 80){
         let particleCount = floor(map(smoothedAmp, 80, 255, 3, 12));
-        for (let p = 0; p < particleCount; p++) {
+        for(let p=0;p<particleCount;p++){
           let particleAngle = (TWO_PI / particleCount) * p + time * 2;
           let particleRadius = w/2 * (0.6 + sin(time * 3 + p) * 0.2);
           stroke(255, 80);
