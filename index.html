@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>복합 구조 오디오 반응 아트 - 버튼 동일 크기</title>
+  <title>복합 구조 오디오 반응 아트 – PC/Mobile 동일</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/addons/p5.sound.min.js"></script>
 
@@ -26,11 +26,10 @@
       z-index: 2000;
     }
 
-    /* ★ 세 버튼 모두 고정 크기 */
     #controls button {
       font-family: 'OnulSamhwa', sans-serif;
-      width: 120px;           /* 가로 고정 */
-      height: 36px;           /* 세로 고정 */
+      width: 120px;
+      height: 36px;
       font-size: 14px;
       color: #fff;
       background: rgba(255, 255, 255, 0.15);
@@ -53,20 +52,30 @@
       border: 1px solid rgba(255, 255, 255, 0.6);
       transform: scale(0.95);
     }
-
-    /* 마이크 아이콘은 버튼 높이에 맞춰 */
     #toggleMic img {
-      height: 20px;           /* 버튼 높이 안에서 동일 비율 */
+      height: 20px;
       width: auto;
       display: block;
+    }
+
+    /* 모바일(좁은 화면)에서는 하단 가로 배열 */
+    @media (max-width: 768px) {
+      #controls {
+        top: auto;
+        bottom: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        flex-direction: row;
+        gap: 12px;
+      }
     }
 
     body, html {
       margin: 0;
       padding: 0;
       height: 100%;
-      overflow: hidden;
       background: #000;
+      overflow: hidden;
     }
     canvas { display: block; }
   </style>
@@ -90,7 +99,9 @@ let circleOffsetY = 0, lineOffsetY = 0, symbolAlpha = 255;
 let smoothHighEnergy = 0, directionSmooth = 1;
 
 function setup() {
-  createCanvas(windowWidth, windowHeight);
+  // ★ 기기 해상도 차이를 없애기 위해 픽셀 밀도 1로 고정
+  pixelDensity(1);
+  createCanvas(window.innerWidth, window.innerHeight);
   noFill();
 
   mic = new p5.AudioIn();
@@ -130,7 +141,9 @@ function setup() {
   clearBtn.addEventListener("click", () => background(0));
 }
 
-function windowResized() { resizeCanvas(windowWidth, windowHeight); }
+function windowResized() {
+  resizeCanvas(window.innerWidth, window.innerHeight);
+}
 
 function draw() {
   if (!trailMode) background(0);
@@ -168,7 +181,7 @@ function draw() {
   let targetLineY   = silent ? 150  : 0;
   circleOffsetY = lerp(circleOffsetY, targetCircleY, 0.05);
   lineOffsetY   = lerp(lineOffsetY,   targetLineY,   0.05);
-  symbolAlpha = lerp(symbolAlpha, silent ? 255 : 0, 0.05);
+  symbolAlpha   = lerp(symbolAlpha, silent ? 255 : 0, 0.05);
 
   let bassEnergy = micEnabled ? fft.getEnergy(20, 250) : 0;
   let midEnergy  = micEnabled ? fft.getEnergy(250, 2000) : 0;
@@ -183,6 +196,7 @@ function draw() {
 
   translate(width/2, height/2);
 
+  // 무음 심볼
   if (symbolAlpha > 1) {
     stroke(255, symbolAlpha);
     strokeWeight(2);
@@ -211,9 +225,10 @@ function draw() {
       let w = lerp(width * 0.15, 80, t) + sustainEffect;
       let h = lerp(1, 80, t);
 
-      let mainAlpha = map(midEnergy, 0, 255, 10, 60);
+      // 선명도 강화
+      let mainAlpha = map(midEnergy, 0, 255, 30, 140);
       stroke(255, mainAlpha);
-      strokeWeight(map(t, 0, 1, 0.5, 2));
+      strokeWeight(map(t, 0, 1, 0.8, 3));
       ellipse(0, 0, w, h);
 
       if (smoothHighEnergy > 20) {
@@ -222,15 +237,15 @@ function draw() {
           let detailT = j / detailCount;
           let detailW = w * (0.2 + detailT * 0.6);
           let detailH = h * (0.2 + detailT * 0.6);
-          stroke(255, map(smoothHighEnergy, 20, 255, 15, 50));
-          strokeWeight(0.5 + j * 0.3);
+          stroke(255, map(smoothHighEnergy, 20, 255, 30, 90));
+          strokeWeight(0.6 + j * 0.4);
           ellipse(0, 0, detailW, detailH);
         }
       }
 
       if (smoothedAmp > 50) {
-        stroke(255, map(smoothedAmp, 50, 255, 10, 40));
-        strokeWeight(0.3);
+        stroke(255, map(smoothedAmp, 50, 255, 25, 70));
+        strokeWeight(0.4);
         beginShape();
         for (let angle = 0; angle < TWO_PI; angle += 0.2) {
           let noiseVal = noise(
@@ -245,8 +260,8 @@ function draw() {
       }
 
       if (bassEnergy > 30) {
-        stroke(255, map(bassEnergy, 30, 255, 8, 40));
-        strokeWeight(map(t, 0, 1, 0.2, 1));
+        stroke(255, map(bassEnergy, 30, 255, 20, 60));
+        strokeWeight(map(t, 0, 1, 0.4, 1.6));
         let extend = map(bassEnergy, 30, 255, 1.1, 1.4);
         ellipse(0, 0, w * extend, h * 0.3);
         ellipse(0, 0, w * 0.3, h * extend);
@@ -257,8 +272,8 @@ function draw() {
         for (let p = 0; p < particleCount; p++) {
           let particleAngle = (TWO_PI / particleCount) * p + time * 2;
           let particleRadius = w/2 * (0.6 + sin(time * 3 + p) * 0.2);
-          stroke(255, 60);
-          strokeWeight(1.5 + sin(time * 4 + p) * 0.8);
+          stroke(255, 80);
+          strokeWeight(2 + sin(time * 4 + p) * 1);
           point(cos(particleAngle)*particleRadius,
                 sin(particleAngle)*particleRadius * (h/w));
         }
