@@ -201,27 +201,33 @@ function draw(){
   lineOffsetY   = lerp(lineOffsetY,   silent?150:0, 0.05);
   symbolAlpha   = lerp(symbolAlpha,   silent?255:0, 0.05);
 
-  let bassEnergy = micEnabled? fft.getEnergy(20,250):0;
-  let midEnergy  = micEnabled? fft.getEnergy(250,2000):0;
-  let rawHigh    = micEnabled? fft.getEnergy(500,8000):0;
-  smoothHighEnergy = lerp(smoothHighEnergy, rawHigh, 0.3);
+  let spectrum = fft.analyze();
+  let bassLimit = floor(spectrum.length * 0.1);
+  let midLimit  = floor(spectrum.length * 0.4);
 
-  let spacing   = map(smoothedAmp, 0, 255, 0, 60);
+  let bassEnergy=0, midEnergy=0, highEnergy=0;
+  for(let i=0; i<bassLimit; i++) bassEnergy += spectrum[i];
+  for(let i=bassLimit; i<midLimit; i++) midEnergy += spectrum[i];
+  for(let i=midLimit; i<spectrum.length; i++) highEnergy += spectrum[i];
+
+  // 기존보다 상한 높여 선명도 강화
+  bassEnergy = map(bassEnergy, 0, bassLimit*255, 0, 160);
+  midEnergy  = map(midEnergy,  0, (midLimit-bassLimit)*255, 0, 140);
+  highEnergy = map(highEnergy, 0, (spectrum.length-midLimit)*255, 0, 180);
+
+  let spacing   = map(smoothedAmp, 0, 255, 0, 75);
   let numShapes = floor(map(smoothedAmp, 0, 255, 3, 12));
 
-  // 가로 확장 둔감 : 증가 속도·최대값 조정
-  if(numShapes>3){
-    sustainCounter++;
-    if(sustainCounter>60) sustainW = min(sustainW + 1.2, 400); // <-- 속도/최대 ↓
-  } else {
-    sustainCounter=0;
-    sustainW = lerp(sustainW, 0, 0.03); // <-- 천천히 복원
-  }
+  if(numShapes>3){ sustainCounter++; if(sustainCounter>60) sustainW = min(sustainW + 1.2, 400);}
+  else { sustainCounter=0; sustainW = lerp(sustainW, 0, 0.03); }
 
   translate(width/2, height/2);
 
+  // 모션과 누적의 알파 가중치
+  let fadeFactor = trailMode ? 0.6 : 1.0;
+
   if(symbolAlpha > 1){
-    stroke(255, symbolAlpha);
+    stroke(255, symbolAlpha * fadeFactor);
     strokeWeight(2);
     ellipse(0, circleOffsetY, 80, 80);
     line(-100, lineOffsetY, 100, lineOffsetY);
@@ -230,9 +236,9 @@ function draw(){
   if(!(!silent && symbolAlpha < 5)) return;
 
   function drawComplexPattern(isTop=true){
-    let targetDirection = (bassEnergy > smoothHighEnergy)? 1 : -1;
+    let targetDirection = (bassEnergy > highEnergy)? 1 : -1;
     directionSmooth = lerp(directionSmooth, targetDirection, 0.05);
-    let maxRot = map(smoothedAmp, 0, 255, 0, PI/1.2);
+    let maxRot = map(smoothedAmp, 0, 255, 0, PI/1.2) * 1.3;
 
     for(let i=0; i<numShapes; i++){
       let t = i / (numShapes - 1);
@@ -248,25 +254,25 @@ function draw(){
       let w = lerp(baseWidth * 0.15, 80, t) + sustainEffect;
       let h = lerp(1, 80, t);
 
-      let mainAlpha = map(midEnergy, 0, 255, 30, 140);
+      let mainAlpha = map(midEnergy, 0, 140, 50, 220) * fadeFactor;
       stroke(255, mainAlpha);
       strokeWeight(map(t, 0, 1, 0.8, 3));
       ellipse(0, 0, w, h);
 
-      if(smoothHighEnergy > 20){
-        let detailCount = floor(map(smoothHighEnergy, 20, 255, 2, 6));
+      if(highEnergy > 20){
+        let detailCount = floor(map(highEnergy, 20, 180, 2, 6));
         for(let j=0;j<detailCount;j++){
           let detailT = j / detailCount;
           let detailW = w * (0.2 + detailT * 0.6);
           let detailH = h * (0.2 + detailT * 0.6);
-          stroke(255, map(smoothHighEnergy, 20, 255, 30, 90));
+          stroke(255, map(highEnergy, 20, 180, 40, 120) * fadeFactor);
           strokeWeight(0.6 + j * 0.4);
           ellipse(0, 0, detailW, detailH);
         }
       }
 
       if(smoothedAmp > 50){
-        stroke(255, map(smoothedAmp, 50, 255, 25, 70));
+        stroke(255, map(smoothedAmp, 50, 255, 40, 90) * fadeFactor);
         strokeWeight(0.4);
         beginShape();
         for(let angle=0; angle<TWO_PI; angle+=0.2){
@@ -282,19 +288,19 @@ function draw(){
       }
 
       if(bassEnergy > 30){
-        stroke(255, map(bassEnergy, 30, 255, 20, 60));
+        stroke(255, map(bassEnergy, 30, 160, 30, 70) * fadeFactor);
         strokeWeight(map(t, 0, 1, 0.4, 1.6));
-        let extend = map(bassEnergy, 30, 255, 1.1, 1.4);
+        let extend = map(bassEnergy, 30, 160, 1.1, 1.4);
         ellipse(0, 0, w * extend, h * 0.3);
         ellipse(0, 0, w * 0.3, h * extend);
       }
 
       if(smoothedAmp > 80){
-        let particleCount = floor(map(smoothedAmp, 80, 255, 3, 12));
+        let particleCount = floor(map(smoothedAmp, 80, 255, 3, 20));
         for(let p=0;p<particleCount;p++){
           let particleAngle = (TWO_PI / particleCount) * p + time * 2;
           let particleRadius = w/2 * (0.6 + sin(time * 3 + p) * 0.2);
-          stroke(255, 80);
+          stroke(255, 100 * fadeFactor);
           strokeWeight(2 + sin(time * 4 + p) * 1);
           point(cos(particleAngle)*particleRadius,
                 sin(particleAngle)*particleRadius * (h/w));
